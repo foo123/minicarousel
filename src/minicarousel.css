@@ -8,7 +8,7 @@
     --buttons-outside: calc(1 / 2);
     --animation: 1200ms;
     --easing: 'cubic'; /* or 'quadratic' or 'linear' */
-    --offset: 50px;
+    --offset: calc(3 * var(--gap));
     --_vit: max(1, var(--visible-items));
     --_gap: max(0px, var(--gap));
     position: relative;

@@ -245,7 +245,7 @@ function goTo(carousel, dir)
         }*/
         dir = 0 > dir ? -1 : 1;
         var style = computedStyle(carousel),
-            i, start, end, off,
+            i, s, e, a, d,
             index = carousel.$minicarousel.index,
             items = get_items(carousel, style),
             n = items.length,
@@ -259,34 +259,33 @@ function goTo(carousel, dir)
         // clear previous animation if any
         if (carousel.$minicarousel.stop) carousel.$minicarousel.stop();
 
-        carousel.$minicarousel.index = n ? (0 > dir ? (index >= N ? (index - N) : 0) : (index + N < n ? (index + N) : stdMath.max(0, n - N))) : 0;
-        if (index !== carousel.$minicarousel.index)
+        carousel.$minicarousel.index = n ? (0 > dir ? stdMath.max(0, index - N) : stdMath.min(index + N, stdMath.max(0, n - N))) : 0;
+        a = stdMath.abs(carousel.$minicarousel.index - index);
+        //if (0 < a)
         {
-            if (stdMath.abs(carousel.$minicarousel.index - index) !== N)
-            {
-                anim.duration *= stdMath.abs(carousel.$minicarousel.index - index) / N;
-            }
-            start = clamp(index, 0, n - 1);
-            end = clamp(index + N - 1, 0, n - 1);
+            if (0 < a && a < N) anim.duration *= a / N;
+            s = clamp(index, 0, n - 1);
+            e = clamp(index + N - 1, 0, n - 1);
+            d = anim.duration / 2;
             if (0 > dir)
             {
-                for (i=start; i<=end; ++i)
+                for (i=s; i<=e; ++i)
                 {
-                    off = clamp((end - i)*100, 0, anim.duration/2);
+                    a = clamp((e - i)*100, 0, d);
                     if (0 <= i && i < n)
                     {
-                        addStyle(items[i], 'animation', 'minicarousel-animation-rev '+String(anim.duration - off)+'ms'+' ease '+String(off)+'ms');
+                        addStyle(items[i], 'animation', 'minicarousel-animation-rev '+String(anim.duration - a)+'ms'+' ease '+String(a)+'ms');
                     }
                 }
             }
             else
             {
-                for (i=end; i>=start; --i)
+                for (i=e; i>=s; --i)
                 {
-                    off = clamp((i - start)*100, 0, anim.duration/2);
+                    a = clamp((i - s)*100, 0, anim.duration/2);
                     if (0 <= i && i < n)
                     {
-                        addStyle(items[i], 'animation', 'minicarousel-animation '+String(anim.duration - off)+'ms'+' ease '+String(off)+'ms');
+                        addStyle(items[i], 'animation', 'minicarousel-animation '+String(anim.duration - a)+'ms'+' ease '+String(a)+'ms');
                     }
                 }
             }
@@ -297,7 +296,7 @@ function goTo(carousel, dir)
             anim.duration, anim.easing,
             function() {
                 n = items.length;
-                for (i=start; i<=end; ++i)
+                for (i=s; i<=e; ++i)
                 {
                     if (0 <= i && i < n)
                     {
