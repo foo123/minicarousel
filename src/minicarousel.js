@@ -266,35 +266,20 @@ function goTo(carousel, dir)
         if (index !== carousel.$minicarousel.index)
         {
             if (stdMath.abs(carousel.$minicarousel.index - index) !== N)
+            {
                 dur *= stdMath.abs(carousel.$minicarousel.index - index) / N;
-            off = offset;
-            if (0 > dir)
-            {
-                start = stdMath.min(n, index + N);
-                end = stdMath.max(0, index);
-                for (i=end; i<start; ++i)
-                {
-                    if (0 <= i && i < n)
-                    {
-                        addClass(items[i], 'minicarousel-animated');
-                        addStyle(items[i], 'transform', 'translateX(' + String(off) + 'px)');
-                    }
-                    off *= 2;
-                }
             }
-            else
+            off = offset;
+            start = stdMath.max(0, index);
+            end = stdMath.min(n, index + N);
+            for (i=start; i<end; ++i)
             {
-                start = stdMath.max(0, index);
-                end = stdMath.min(n, index + N);
-                for (i=start; i<end; ++i)
+                if (0 <= i && i < n)
                 {
-                    if (0 <= i && i < n)
-                    {
-                        addClass(items[i], 'minicarousel-animated');
-                        addStyle(items[i], 'transform', 'translateX(' + String(off) + 'px)');
-                    }
-                    off *= 2;
+                    addClass(items[i], 'minicarousel-animated');
+                    addStyle(items[i], 'transform', 'translateX(' + String(off) + 'px)');
                 }
+                off *= 2;
             }
             setTimeout(function() {
                 n = items.length;
@@ -337,10 +322,12 @@ function minicarousel(carousels)
                 if ('hidden' !== get_auto_scroll(carousel))
                 {
                     carousel.$minicarousel.index = 0;
-                    return;
                 }
-                var N = get_visible_items(carousel), amount = get_visible_size(carousel) + get_gap(carousel);
-                carousel.children[0].scrollLeft = stdMath.floor(carousel.$minicarousel.index / N) * amount;
+                else
+                {
+                    var N = get_visible_items(carousel), amount = get_visible_size(carousel) + get_gap(carousel);
+                    carousel.children[0].scrollLeft = stdMath.floor(carousel.$minicarousel.index / N) * amount;
+                }
             }
         });
     }, 200);
