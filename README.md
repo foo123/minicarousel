@@ -2,7 +2,7 @@
 
 Optimized responsive Carousel for Desktop and Mobile
 
-**version: 1.0.0** (5kB minified)
+**version: 1.0.0** (6kB minified)
 
 **demo**
 
@@ -27,7 +27,7 @@ Optimized responsive Carousel for Desktop and Mobile
 @media (max-width: 400px) {
 .minicarousel {
     --visible-items: 1;
-    --has-buttons: 0;
+    --show-buttons: 0;
     --auto-scroll: auto;
 }
 }

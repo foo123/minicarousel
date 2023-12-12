@@ -73,6 +73,10 @@ function removeStyle(el, prop)
     if (el.style.removeProperty) el.style.removeProperty(prop);
     else el.style[prop] = '';
 }
+function computedStyle(el)
+{
+    return ('function' === typeof window.getComputedStyle ? window.getComputedStyle(el, null) : el.currentStyle) || {};
+}
 function debounce(fn, delay)
 {
     var timer = null;
@@ -104,16 +108,17 @@ function interpolate(a, b, t, easing, isFinal)
 {
     return isFinal ? b : (a + (b - a) * easing(t));
 }
-function animate(el, props, duration, easing, oncomplete)
+function animate(el, props, max, duration, easing, oncomplete)
 {
     if (!el) return function() {};
 
-    var i = 0, n = 49, t, p, p2, o = {}, d = {}, stopped = false;
+    var i = 0, n = 49,//stdMath.min(49, stdMath.max(0, stdMath.floor(max - 1))),
+        t, p, p2, o = {}, d = {}, stopped = false;
 
     easing = easing || easing_linear;
 
     function animation() {
-        if (stopped || (0 >= duration))
+        if (stopped || (0 >= duration) || (0 >= n))
         {
             // force to completion
             t = 1;
@@ -175,9 +180,10 @@ function animate(el, props, duration, easing, oncomplete)
     animation();
     return function(){stopped = true;};
 }
-function get_visible_items(carousel)
+function get_visible_items(carousel, style)
 {
-    return stdMath.max(1, carousel ? (parseInt(window.getComputedStyle(carousel).getPropertyValue('--visible-items')) || 0) : 0);
+    style = style || computedStyle(carousel);
+    return stdMath.max(1, parseFloat(style.getPropertyValue('--visible-items')) || 0);
 }
 function get_visible_size(carousel)
 {
@@ -191,29 +197,25 @@ function get_item_size(carousel)
 {
     return carousel ? (carousel.children[0].children[0].children.length ? carousel.children[0].children[0].children[0].offsetWidth : 0) : 0;
 }
-function get_auto_scroll(carousel)
+function get_auto_scroll(carousel, style)
 {
-    return carousel ? window.getComputedStyle(carousel).getPropertyValue('--auto-scroll') : 'auto';
+    style = style || computedStyle(carousel);
+    return style.getPropertyValue('--auto-scroll');
 }
-function get_gap(carousel)
+function get_gap(carousel, style)
 {
-    return stdMath.max(0, carousel ? (parseInt(window.getComputedStyle(carousel).getPropertyValue('--gap')) || 0) : 0);
+    style = style || computedStyle(carousel);
+    return stdMath.max(0, parseInt(style.getPropertyValue('--gap')) || 0);
 }
-function get_offset(carousel)
+function get_animation(carousel, style)
 {
-    return stdMath.max(0, carousel ? (parseFloat(window.getComputedStyle(carousel).getPropertyValue('--offset')) || 0) : 0);
-}
-function get_animation_duration(carousel)
-{
-    return stdMath.max(0, carousel ? (parseFloat(window.getComputedStyle(carousel).getPropertyValue('--animation')) || 0) : 0);
-}
-function get_animation_easing(carousel)
-{
-    var easing = carousel ? window.getComputedStyle(carousel).getPropertyValue('--easing') : '"linear"';
+    style = style || computedStyle(carousel);
+    var easing = style.getPropertyValue('--easing');
     if (easing && easing.length) easing = easing.slice(1, -1).toLowerCase();
-    if ('cubic' === easing) return easing_cubic;
-    else if ('quadratic' === easing) return easing_quadratic;
-    return easing_linear;
+    return {
+        duration: stdMath.max(0, parseFloat(style.getPropertyValue('--animation')) || 0),
+        easing: 'cubic' === easing ? easing_cubic : ('quadratic' === easing ? easing_quadratic : easing_linear)
+    };
 }
 function goTo(carousel, dir)
 {
@@ -233,7 +235,7 @@ function goTo(carousel, dir)
                 if (running)
                 {
                     requestAnimationFrame(anim);
-                    carousel.children[0].scrollLeft = interpolate(a, b, (parseFloat(window.getComputedStyle(carousel).getPropertyValue('--value')) || 0));
+                    carousel.children[0].scrollLeft = interpolate(a, b, (parseFloat(computedStyle(carousel).getPropertyValue('--value')) || 0));
                 }
             });
         }
@@ -242,66 +244,79 @@ function goTo(carousel, dir)
             carousel.children[0].scrollLeft = scroll;
         }*/
         dir = 0 > dir ? -1 : 1;
-        var i, start, end, off,
+        var style = computedStyle(carousel),
+            i, start, end, off,
             index = carousel.$minicarousel.index,
-            items = get_items(carousel),
+            items = get_items(carousel, style),
             n = items.length,
-            N = get_visible_items(carousel),
-            offset = get_offset(carousel),
-            dur = get_animation_duration(carousel),
-            easing = get_animation_easing(carousel),
-            amount = get_visible_size(carousel) + get_gap(carousel),
+            N = stdMath.round(get_visible_items(carousel, style)),
+            anim = get_animation(carousel, style),
+            amount = get_visible_size(carousel, style) + get_gap(carousel, style),
             sc = carousel.children[0].scrollLeft || 0,
             scamount = 0 > dir ? (index >= N ? -amount : -sc) : (index + N < n ? amount : (carousel.children[0].scrollWidth - carousel.children[0].clientWidth - sc)),
             scroll = stdMath.max(0, sc + scamount);
 
         // clear previous animation if any
         if (carousel.$minicarousel.stop) carousel.$minicarousel.stop();
-        forEach.call(items, function(item) {
-            removeClass(item, 'minicarousel-animated');
-            removeStyle(item, 'transform');
-        });
 
         carousel.$minicarousel.index = n ? (0 > dir ? (index >= N ? (index - N) : 0) : (index + N < n ? (index + N) : stdMath.max(0, n - N))) : 0;
         if (index !== carousel.$minicarousel.index)
         {
             if (stdMath.abs(carousel.$minicarousel.index - index) !== N)
             {
-                dur *= stdMath.abs(carousel.$minicarousel.index - index) / N;
+                anim.duration *= stdMath.abs(carousel.$minicarousel.index - index) / N;
             }
-            off = offset;
-            start = stdMath.max(0, index);
-            end = stdMath.min(n, index + N);
-            for (i=start; i<end; ++i)
+            start = clamp(index, 0, n - 1);
+            end = clamp(index + N - 1, 0, n - 1);
+            if (0 > dir)
             {
-                if (0 <= i && i < n)
+                for (i=start; i<=end; ++i)
                 {
-                    addClass(items[i], 'minicarousel-animated');
-                    addStyle(items[i], 'transform', 'translateX(' + String(off) + 'px)');
+                    off = clamp((end - i)*100, 0, anim.duration/2);
+                    if (0 <= i && i < n)
+                    {
+                        addStyle(items[i], 'animation', 'minicarousel-animation-rev '+String(anim.duration - off)+'ms'+' ease '+String(off)+'ms');
+                    }
                 }
-                off *= 2;
             }
-            setTimeout(function() {
+            else
+            {
+                for (i=end; i>=start; --i)
+                {
+                    off = clamp((i - start)*100, 0, anim.duration/2);
+                    if (0 <= i && i < n)
+                    {
+                        addStyle(items[i], 'animation', 'minicarousel-animation '+String(anim.duration - off)+'ms'+' ease '+String(off)+'ms');
+                    }
+                }
+            }
+            carousel.$minicarousel.stop = animate(
+            carousel.children[0],
+            {scrollLeft: scroll},
+            stdMath.abs(scamount),
+            anim.duration, anim.easing,
+            function() {
                 n = items.length;
-                for (i=start; i<end; ++i)
+                for (i=start; i<=end; ++i)
                 {
                     if (0 <= i && i < n)
                     {
-                        removeClass(items[i], 'minicarousel-animated');
-                        removeStyle(items[i], 'transform');
+                        removeStyle(items[i], 'animation');
+                        if (hasClass(items[i], 'minicarousel-animated')) removeClass(items[i], 'minicarousel-animated');
+                        if (hasClass(items[i], 'minicarousel-animated-rev')) removeClass(items[i], 'minicarousel-animated-rev');
                     }
                 }
-            }, dur);
-            carousel.$minicarousel.stop = animate(carousel.children[0], {scrollLeft: scroll}, dur, easing);
+            });
         }
     }
 }
 function minicarousel(carousels)
 {
-    var self = this;
+    var self = this, handler, resize, add, remove;
     if (!(self instanceof minicarousel)) return new minicarousel(carousels);
 
-    var handler = function handler(evt) {
+    // private methods
+    handler = function handler(evt) {
         var bt = evt.target.closest('a');
         if (!bt) return;
         if (hasClass(bt, 'minicarousel-prev-bt'))
@@ -315,7 +330,7 @@ function minicarousel(carousels)
             goTo(bt.parentNode, +1);
         }
     };
-    var resize = debounce(function resize() {
+    resize = debounce(function resize() {
         forEach.call(carousels, function(carousel) {
             if (carousel.$minicarousel)
             {
@@ -325,60 +340,105 @@ function minicarousel(carousels)
                 }
                 else
                 {
-                    var N = get_visible_items(carousel), amount = get_visible_size(carousel) + get_gap(carousel);
+                    var style = computedStyle(carousel),
+                        N = stdMath.round(get_visible_items(carousel, style)),
+                        amount = get_visible_size(carousel, style) + get_gap(carousel, style);
                     carousel.children[0].scrollLeft = stdMath.floor(carousel.$minicarousel.index / N) * amount;
                 }
             }
         });
     }, 200);
+    add = function add(carousel) {
+        var prevBt, nextBt;
+        if ((prevBt = carousel.querySelector('.minicarousel-prev-bt')) && (carousel === prevBt.parentNode))
+        {
+            if (prevBt.$minicarousel) removeEvent(prevBt, 'click', prevBt.$minicarousel, {passive:false,capture:false});
+            addEvent(prevBt, 'click', prevBt.$minicarousel = handler, {passive:false,capture:false});
+        }
+        else
+        {
+            prevBt = document.createElement('a');
+            prevBt.href = '#';
+            addClass(prevBt, 'minicarousel-prev-bt');
+            addEvent(prevBt, 'click', prevBt.$minicarousel = handler, {passive:false,capture:false});
+            carousel.appendChild(prevBt);
+        }
+        if ((nextBt = carousel.querySelector('.minicarousel-next-bt')) && (carousel === nextBt.parentNode))
+        {
+            if (nextBt.$minicarousel) removeEvent(prevBt, 'click', nextBt.$minicarousel, {passive:false,capture:false});
+            addEvent(nextBt, 'click', nextBt.$minicarousel = handler, {passive:false,capture:false});
+        }
+        else
+        {
+            nextBt = document.createElement('a');
+            nextBt.href = '#';
+            addClass(nextBt, 'minicarousel-next-bt');
+            addEvent(nextBt, 'click', nextBt.$minicarousel = handler, {passive:false,capture:false});
+            carousel.appendChild(nextBt);
+        }
+        (carousel.children[0]) && (carousel.children[0].scrollLeft = 0);
+        carousel.$minicarousel = {stop:null, index:0};
+        addClass(carousel, 'minicarousel-js');
+    };
+    remove = function remove(carousel) {
+        var prevBt = carousel.querySelector('.minicarousel-prev-bt'),
+            nextBt = carousel.querySelector('.minicarousel-next-bt');
+        if (prevBt && (carousel === prevBt.parentNode))
+        {
+            carousel.removeChild(prevBt);
+            if (prevBt.$minicarousel) removeEvent(prevBt, 'click', prevBt.$minicarousel, {passive:false,capture:false});
+            prevBt.$minicarousel = null;
+        }
+        if (nextBt && (carousel === nextBt.parentNode))
+        {
+            carousel.removeChild(nextBt);
+            if (nextBt.$minicarousel) removeEvent(nextBt, 'click', nextBt.$minicarousel, {passive:false,capture:false});
+            nextBt.$minicarousel = null;
+        }
+        //if (carousel.$minicarousel.stop) carousel.$minicarousel.stop();
+        removeClass(carousel, 'minicarousel-js');
+        carousel.$minicarousel = null;
+    };
 
     // dispose
     self.dispose = function() {
         removeEvent(window, 'resize', resize);
-        forEach.call(carousels, function(carousel) {
-            var prevBt = carousel.querySelector('.minicarousel-prev-bt'),
-                nextBt = carousel.querySelector('.minicarousel-next-bt');
-            if (prevBt)
-            {
-                removeEvent(prevBt, 'click', handler, {passive:false,capture:false});
-                carousel.removeChild(prevBt);
-            }
-            if (nextBt)
-            {
-                removeEvent(nextBt, 'click', handler, {passive:false,capture:false});
-                carousel.removeChild(nextBt);
-            }
-            //if (carousel.$minicarousel.stop) carousel.$minicarousel.stop();
-            removeClass(carousel, 'minicarousel-js');
-            carousel.$minicarousel = null;
-        });
+        forEach.call(carousels, remove);
         carousels = [];
+    };
+    // add
+    self.add = function(carousel) {
+        if (-1 === carousels.indexOf(carousel))
+        {
+            add(carousel);
+            carousels.push(carousel);
+        }
+        return self;
+    };
+    // remove
+    self.remove = function(carousel) {
+        var idx;
+        if (-1 !== (idx = carousels.indexOf(carousel)))
+        {
+            carousels.splice(idx, 1);
+            remove(carousel);
+        }
+        return self;
     };
 
     // init
-    carousels = carousels || [];
-    forEach.call(carousels, function(carousel) {
-        var prevBt = document.createElement('a'),
-            nextBt = document.createElement('a');
-        prevBt.href = '#';
-        addClass(prevBt, 'minicarousel-prev-bt');
-        addEvent(prevBt, 'click', handler, {passive:false,capture:false});
-        nextBt.href = '#';
-        addClass(nextBt, 'minicarousel-next-bt');
-        addEvent(nextBt, 'click', handler, {passive:false,capture:false});
-        carousel.appendChild(prevBt);
-        carousel.appendChild(nextBt);
-        carousel.$minicarousel = {stop:null, index:0};
-        addClass(carousel, 'minicarousel-js');
-    });
+    carousels = Array.prototype.slice.call(carousels || []);
+    forEach.call(carousels, add);
     addEvent(window, 'resize', resize);
 }
 minicarousel.prototype = {
     constructor: minicarousel,
-    dispose: null
+    dispose: null,
+    add: null,
+    remove: null
 };
 minicarousel.VERSION = '1.0.0';
-
+if (root.Element) root.Element.prototype.$minicarousel = null;
 // export it
 root.minicarousel = minicarousel;
 })('undefined' !== typeof self ? self : window);

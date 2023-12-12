@@ -3,12 +3,12 @@
     --visible-items: 4;
     --gap: 10px;
     --auto-scroll: hidden;
-    --has-buttons: 1;
+    --show-buttons: 1;
     --button-size: 40px;
     --buttons-outside: calc(1 / 2);
-    --animation: 400ms;
+    --animation: 1200ms;
     --easing: 'cubic'; /* or 'quadratic' or 'linear' */
-    --offset: 10;
+    --offset: 50px;
     --_vit: max(1, var(--visible-items));
     --_gap: max(0px, var(--gap));
     position: relative;
@@ -16,8 +16,8 @@
     box-sizing: border-box;
     padding: 0;
     border: 0;
-    padding-left: calc(var(--has-buttons) * var(--button-size) * var(--buttons-outside));
-    padding-right: calc(var(--has-buttons) * var(--button-size) * var(--buttons-outside));
+    padding-left: calc(var(--show-buttons) * var(--button-size) * var(--buttons-outside));
+    padding-right: calc(var(--show-buttons) * var(--button-size) * var(--buttons-outside));
     margin: 0 auto;
     max-width: 100%;
 }
@@ -40,6 +40,7 @@
     border: 0;
     margin: 0;
     width: auto;
+    height: auto;
     list-style-type: none !important;
     white-space: nowrap !important;
     font-size: 0 !important;
@@ -53,13 +54,17 @@
     white-space: initial;
     font-size: 1rem;
     width: calc((100% - (var(--_vit) - 1) * var(--_gap)) / var(--_vit));
-    transform: translateX(0);
-}
-.minicarousel > .minicarousel-viewport > *:first-child > *.minicarousel-animated {
-    transition: transform var(--animation) ease;
+    --_dur: 0ms;
+    --_del: 0ms;
 }
 .minicarousel > .minicarousel-viewport > *:first-child > *:not(:first-child) {
     margin-left: var(--_gap) !important;
+}
+.minicarousel > .minicarousel-viewport > *:first-child > *.minicarousel-animated {
+    animation: minicarousel-animation var(--_dur) ease var(--_del);
+}
+.minicarousel > .minicarousel-viewport > *:first-child > *.minicarousel-animated-rev {
+    animation: minicarousel-animation-rev var(--_dur) ease var(--_del);
 }
 .minicarousel > .minicarousel-prev-bt,
 .minicarousel > .minicarousel-next-bt {
@@ -71,8 +76,8 @@
     z-index: 2;
     overflow: hidden;
     border-radius: 50%;
-    width: calc(var(--has-buttons) * var(--button-size));
-    height: calc(var(--has-buttons) * var(--button-size));
+    width: calc(var(--show-buttons) * var(--button-size));
+    height: calc(var(--show-buttons) * var(--button-size));
     top: 50%;
     margin-top: calc((0px - var(--button-size)) / 2);
     background-color: rgba(0,0,0,0.3);
@@ -110,13 +115,35 @@
     background-size: contain;
 }
 .minicarousel:not(.minicarousel-js) {
-    --has-buttons: 0;
+    --show-buttons: 0;
     --auto-scroll: auto;
+}
+@keyframes minicarousel-animation {
+    0% {
+        transform: translateX(0);
+    }
+    50% {
+        transform: translateX(calc(0px - var(--offset)));
+    }
+    100% {
+        transform: translateX(0);
+    }
+}
+@keyframes minicarousel-animation-rev {
+    0% {
+        transform: translateX(0);
+    }
+    50% {
+        transform: translateX(calc(var(--offset)));
+    }
+    100% {
+        transform: translateX(0);
+    }
 }
 @media (max-width: 360px) {
 .minicarousel {
     --visible-items: 1;
-    --has-buttons: 0;
+    --show-buttons: 0;
     --auto-scroll: auto;
 }
 }
