@@ -2,4 +2,54 @@
 
 Optimized responsive Carousel for Desktop and Mobile
 
-**in progress**
+**version: 1.0.0** (5kB minified)
+
+**demo**
+
+```html
+<style type="text/css">
+.minicarousel {
+    width: 1200px;
+    max-width: 100%;
+    margin: 40px auto;
+}
+.minicarousel li {
+    padding: 70px 0;
+    text-align: center;
+    font-weight: 900;
+    border: 4px solid #d9d9d9;
+}
+@media (max-width: 800px) {
+.minicarousel {
+    --visible-items: 2;
+}
+}
+@media (max-width: 400px) {
+.minicarousel {
+    --visible-items: 1;
+    --has-buttons: 0;
+    --auto-scroll: auto;
+}
+}
+</style>
+<div class="minicarousel">
+<div class="minicarousel-viewport">
+<ul>
+<li>1</li>
+<li>2</li>
+<li>3</li>
+<li>4</li>
+<li>5</li>
+<li>6</li>
+<li>7</li>
+<li>8</li>
+<li>9</li>
+</ul>
+</div>
+</div>
+<script>minicarousel(document.querySelectorAll('.minicarousel'));</script>
+```
+
+**output**
+
+![minicarousel demo](/minicarousel.gif)

@@ -9,7 +9,12 @@
 
 var stdMath = Math,
     forEach = Array.prototype.forEach,
-    hasOwnProperty = Object.prototype.hasOwnProperty;
+    hasOwnProperty = Object.prototype.hasOwnProperty,
+    trim_re = /^\s+|\s+$/g,
+    trim = String.prototype.trim
+    ? function(s) {return s.trim();}
+    : function(s) {return s.replace(trim_re, '');}
+;
 
 function hasEventOptions()
 {
@@ -41,6 +46,33 @@ function removeEvent(target, event, handler, options)
     if (target.detachEvent) target.detachEvent('on' + event, handler);
     else target.removeEventListener(event, handler, hasEventOptions() ? options : ('object' === typeof options ? !!options.capture : !!options));
 }
+function hasClass(el, className)
+{
+    return el.classList
+        ? el.classList.contains(className)
+        : -1 !== (' ' + el.className + ' ').indexOf(' ' + className + ' ')
+    ;
+}
+function addClass(el, className)
+{
+    if (el.classList) el.classList.add(className);
+    else if (-1 === (' ' + el.className + ' ').indexOf(' ' + className + ' ')) el.className = '' === el.className ? className : (el.className + ' ' + className);
+}
+function removeClass(el, className)
+{
+    if (el.classList) el.classList.remove(className);
+    else el.className = trim((' ' + el.className + ' ').replace(' ' + className + ' ', ' '));
+}
+function addStyle(el, prop, val)
+{
+    if (el.style.setProperty) el.style.setProperty(prop, val);
+    else el.style[prop] = val;
+}
+function removeStyle(el, prop)
+{
+    if (el.style.removeProperty) el.style.removeProperty(prop);
+    else el.style[prop] = '';
+}
 function debounce(fn, delay)
 {
     var timer = null;
@@ -62,23 +94,26 @@ function easing_linear(x)
 }
 function easing_quadratic(x)
 {
-    return x < 0.5 ? 2*x*x : 1 - stdMath.pow(2 - 2*x, 2)/2;
+    return x < 0.5 ? 2*x*x : (1 - stdMath.pow(2 - 2*x, 2)/2);
 }
 function easing_cubic(x)
 {
-    return x < 0.5 ? 4*x*x*x : 1 - stdMath.pow(2 - 2*x, 3)/2;
+    return x < 0.5 ? 4*x*x*x : (1 - stdMath.pow(2 - 2*x, 3)/2);
 }
-function ease(a, b, t)
+function interpolate(a, b, t, easing, isFinal)
 {
-    return a + (b - a) * t;
+    return isFinal ? b : (a + (b - a) * easing(t));
 }
-function animate(el, props, speed, easing, oncomplete)
+function animate(el, props, duration, easing, oncomplete)
 {
-    if (!el) return function(){};
+    if (!el) return function() {};
+
+    var i = 0, n = 49, t, p, p2, o = {}, d = {}, stopped = false;
+
     easing = easing || easing_linear;
-    var i = 0, n = 50, t, p, p2, o = {}, d = {}, stopped = false;
-    function anim() {
-        if (stopped || (0 >= speed))
+
+    function animation() {
+        if (stopped || (0 >= duration))
         {
             // force to completion
             t = 1;
@@ -89,6 +124,7 @@ function animate(el, props, speed, easing, oncomplete)
             t = i/n;
             ++i;
         }
+        var isFinal = (i > n);
         for (p in o)
         {
             if (!hasOwnProperty.call(o, p)) continue;
@@ -97,23 +133,24 @@ function animate(el, props, speed, easing, oncomplete)
                 for (p2 in o.style)
                 {
                     if (!hasOwnProperty.call(o.style, p2)) continue;
-                    el.style[p2] = String(ease(o.style[p2][0], o.style[p2][1], easing(t))) + d[p2];
+                    addStyle(el, p2, String(interpolate(o.style[p2][0], o.style[p2][1], t, easing, isFinal)) + d[p2]);
                 }
             }
             else
             {
-                el[p] = ease(o[p][0], o[p][1], easing(t));
+                el[p] = interpolate(o[p][0], o[p][1], t, easing, isFinal);
             }
         }
         if (i <= n)
         {
-            setTimeout(anim, speed/(n+1));
+            setTimeout(animation, duration/(n+1));
         }
         else
         {
             if (oncomplete) oncomplete(el);
         }
     }
+
     for (p in props)
     {
         if (!hasOwnProperty.call(props, p)) continue;
@@ -135,12 +172,16 @@ function animate(el, props, speed, easing, oncomplete)
             o[p] = [+(el[p]) || 0, +(props[p]) || 0];
         }
     }
-    anim();
+    animation();
     return function(){stopped = true;};
 }
 function get_visible_items(carousel)
 {
     return stdMath.max(1, carousel ? (parseInt(window.getComputedStyle(carousel).getPropertyValue('--visible-items')) || 0) : 0);
+}
+function get_visible_size(carousel)
+{
+    return carousel ? (carousel.children[0].clientWidth || 0) : 0;
 }
 function get_items(carousel)
 {
@@ -149,6 +190,10 @@ function get_items(carousel)
 function get_item_size(carousel)
 {
     return carousel ? (carousel.children[0].children[0].children.length ? carousel.children[0].children[0].children[0].offsetWidth : 0) : 0;
+}
+function get_auto_scroll(carousel)
+{
+    return carousel ? window.getComputedStyle(carousel).getPropertyValue('--auto-scroll') : 'auto';
 }
 function get_gap(carousel)
 {
@@ -172,23 +217,23 @@ function get_animation_easing(carousel)
 }
 function goTo(carousel, dir)
 {
-    if (carousel && carousel.children[0] && carousel.children[0].classList.contains('minicarousel-viewport'))
+    if (carousel && carousel.children[0] && hasClass(carousel.children[0], 'minicarousel-viewport'))
     {
         /*if (0 > dur)
         {
             var running = true, a = carousel.children[0].scrollLeft, b = scroll;
             // duration | easing-function | delay | iteration-count | direction | fill-mode | play-state | name
-            carousel.style.setPropertyValue('animation', String(dur)+'ms var(--easing) 0 1 forward both running minicarousel-animation');
+            addStyle(carousel, 'animation', String(dur)+'ms var(--easing) 0 1 forward both running minicarousel-animation');
             setTimeout(function() {
                 running = false
-                carousel.style.removeProperty('animation');
+                removeStyle(carousel, 'animation');
                 carousel.children[0].scrollLeft = scroll;
             }, dur);
             requestAnimationFrame(function anim() {
                 if (running)
                 {
                     requestAnimationFrame(anim);
-                    carousel.children[0].scrollLeft = ease(a, b, (parseFloat(window.getComputedStyle(carousel).getPropertyValue('--value')) || 0));
+                    carousel.children[0].scrollLeft = interpolate(a, b, (parseFloat(window.getComputedStyle(carousel).getPropertyValue('--value')) || 0));
                 }
             });
         }
@@ -197,112 +242,149 @@ function goTo(carousel, dir)
             carousel.children[0].scrollLeft = scroll;
         }*/
         dir = 0 > dir ? -1 : 1;
-        var N = get_visible_items(carousel),
+        var i, start, end, off,
+            index = carousel.$minicarousel.index,
             items = get_items(carousel),
-            //size = get_item_size(carousel),
-            //gap = get_gap(carousel),
-            i, start, end,
+            n = items.length,
+            N = get_visible_items(carousel),
             offset = get_offset(carousel),
             dur = get_animation_duration(carousel),
             easing = get_animation_easing(carousel),
-            index = carousel.$minicarousel.index,
-            amount = (carousel.children[0].offsetWidth || 0)/*(N * size + (N - 1) * gap)*/,
+            amount = get_visible_size(carousel) + get_gap(carousel),
             sc = carousel.children[0].scrollLeft || 0,
-            scamount = 0 > dir ? (index >= N ? -amount : -sc) : (index + N < items.length ? amount : carousel.children[0].scrollWidth - amount),
+            scamount = 0 > dir ? (index >= N ? -amount : -sc) : (index + N < n ? amount : (carousel.children[0].scrollWidth - carousel.children[0].clientWidth - sc)),
             scroll = stdMath.max(0, sc + scamount);
 
         // clear previous animation if any
         if (carousel.$minicarousel.stop) carousel.$minicarousel.stop();
         forEach.call(items, function(item) {
-            item.classList.remove('minicarousel-animated');
-            item.style.removeProperty('transform');
+            removeClass(item, 'minicarousel-animated');
+            removeStyle(item, 'transform');
         });
 
-        carousel.$minicarousel.index = items.length ? clamp(index + dir*N, 0, items.length - 1) : 0;
-        start = index;
-        end = index + N;
-        for (i=start; i<end; ++i)
+        carousel.$minicarousel.index = n ? (0 > dir ? (index >= N ? (index - N) : 0) : (index + N < n ? (index + N) : stdMath.max(0, n - N))) : 0;
+        if (index !== carousel.$minicarousel.index)
         {
-            offset *= 2;
-            if (0 <= i && i < items.length)
+            if (stdMath.abs(carousel.$minicarousel.index - index) !== N)
+                dur *= stdMath.abs(carousel.$minicarousel.index - index) / N;
+            off = offset;
+            if (0 > dir)
             {
-                items[i].classList.add('minicarousel-animated');
-                items[i].style.setProperty('transform', 'translateX(' + String(offset) + 'px)');
+                start = stdMath.min(n, index + N);
+                end = stdMath.max(0, index);
+                for (i=end; i<start; ++i)
+                {
+                    if (0 <= i && i < n)
+                    {
+                        addClass(items[i], 'minicarousel-animated');
+                        addStyle(items[i], 'transform', 'translateX(' + String(off) + 'px)');
+                    }
+                    off *= 2;
+                }
             }
+            else
+            {
+                start = stdMath.max(0, index);
+                end = stdMath.min(n, index + N);
+                for (i=start; i<end; ++i)
+                {
+                    if (0 <= i && i < n)
+                    {
+                        addClass(items[i], 'minicarousel-animated');
+                        addStyle(items[i], 'transform', 'translateX(' + String(off) + 'px)');
+                    }
+                    off *= 2;
+                }
+            }
+            setTimeout(function() {
+                n = items.length;
+                for (i=start; i<end; ++i)
+                {
+                    if (0 <= i && i < n)
+                    {
+                        removeClass(items[i], 'minicarousel-animated');
+                        removeStyle(items[i], 'transform');
+                    }
+                }
+            }, dur);
+            carousel.$minicarousel.stop = animate(carousel.children[0], {scrollLeft: scroll}, dur, easing);
         }
-        setTimeout(function() {
-            forEach.call(items, function(item) {
-                item.classList.remove('minicarousel-animated');
-                item.style.removeProperty('transform');
-            });
-        }, dur);
-        carousel.$minicarousel.stop = animate(carousel.children[0], {scrollLeft: scroll}, dur, easing);
     }
 }
 function minicarousel(carousels)
 {
-    var self = this, carousels;
+    var self = this;
     if (!(self instanceof minicarousel)) return new minicarousel(carousels);
 
     var handler = function handler(evt) {
         var bt = evt.target.closest('a');
         if (!bt) return;
-        if (bt.classList.contains('minicarousel-prev-bt'))
+        if (hasClass(bt, 'minicarousel-prev-bt'))
         {
             evt.preventDefault && evt.preventDefault();
             goTo(bt.parentNode, -1);
         }
-        else if (bt.classList.contains('minicarousel-next-bt'))
+        else if (hasClass(bt, 'minicarousel-next-bt'))
         {
             evt.preventDefault && evt.preventDefault();
             goTo(bt.parentNode, +1);
         }
     };
     var resize = debounce(function resize() {
-        forEach.call(carousels, function(el) {
-            if (el.$minicarousel)
+        forEach.call(carousels, function(carousel) {
+            if (carousel.$minicarousel)
             {
-                var N = get_visible_items(el), amount = el.children[0].offsetWidth;
-                el.children[0].scrollLeft = stdMath.floor(el.$minicarousel.index / N) * amount;
+                if ('hidden' !== get_auto_scroll(carousel))
+                {
+                    carousel.$minicarousel.index = 0;
+                    return;
+                }
+                var N = get_visible_items(carousel), amount = get_visible_size(carousel) + get_gap(carousel);
+                carousel.children[0].scrollLeft = stdMath.floor(carousel.$minicarousel.index / N) * amount;
             }
         });
     }, 200);
-    carousels = carousels || [];
-    forEach.call(carousels, function(el) {
-        var prevBt = document.createElement('a'),
-            nextBt = document.createElement('a');
-        prevBt.href = '#';
-        prevBt.classList.add('minicarousel-prev-bt');
-        addEvent(prevBt, 'click', handler, {passive:false,capture:false});
-        nextBt.href = '#';
-        nextBt.classList.add('minicarousel-next-bt');
-        addEvent(nextBt, 'click', handler, {passive:false,capture:false});
-        el.appendChild(prevBt);
-        el.appendChild(nextBt);
-        el.$minicarousel = {stop:null,index:0};
-        el.classList.add('minicarousel-js');
-    });
-    addEvent(window, 'resize', resize);
+
+    // dispose
     self.dispose = function() {
         removeEvent(window, 'resize', resize);
-        forEach.call(carousels, function(el) {
-            var prevBt = el.querySelector('.minicarousel-prev-bt'),
-                nextBt = el.querySelector('.minicarousel-next-bt');
+        forEach.call(carousels, function(carousel) {
+            var prevBt = carousel.querySelector('.minicarousel-prev-bt'),
+                nextBt = carousel.querySelector('.minicarousel-next-bt');
             if (prevBt)
             {
                 removeEvent(prevBt, 'click', handler, {passive:false,capture:false});
-                prevBt.parentNode.removeChild(prevBt);
+                carousel.removeChild(prevBt);
             }
             if (nextBt)
             {
                 removeEvent(nextBt, 'click', handler, {passive:false,capture:false});
-                nextBt.parentNode.removeChild(nextBt);
+                carousel.removeChild(nextBt);
             }
-            el.classList.remove('minicarousel-js');
-            el.$minicarousel = null;
+            //if (carousel.$minicarousel.stop) carousel.$minicarousel.stop();
+            removeClass(carousel, 'minicarousel-js');
+            carousel.$minicarousel = null;
         });
         carousels = [];
     };
+
+    // init
+    carousels = carousels || [];
+    forEach.call(carousels, function(carousel) {
+        var prevBt = document.createElement('a'),
+            nextBt = document.createElement('a');
+        prevBt.href = '#';
+        addClass(prevBt, 'minicarousel-prev-bt');
+        addEvent(prevBt, 'click', handler, {passive:false,capture:false});
+        nextBt.href = '#';
+        addClass(nextBt, 'minicarousel-next-bt');
+        addEvent(nextBt, 'click', handler, {passive:false,capture:false});
+        carousel.appendChild(prevBt);
+        carousel.appendChild(nextBt);
+        carousel.$minicarousel = {stop:null, index:0};
+        addClass(carousel, 'minicarousel-js');
+    });
+    addEvent(window, 'resize', resize);
 }
 minicarousel.prototype = {
     constructor: minicarousel,

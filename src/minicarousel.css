@@ -2,6 +2,7 @@
 .minicarousel {
     --visible-items: 4;
     --gap: 10px;
+    --auto-scroll: hidden;
     --has-buttons: 1;
     --button-size: 40px;
     --buttons-outside: calc(1 / 2);
@@ -27,7 +28,7 @@
     padding: 0;
     border: 0;
     margin: 0 auto;
-    overflow-x: hidden;
+    overflow-x: var(--auto-scroll);
     z-index: 1;
     width: 100%;
 }
@@ -75,15 +76,17 @@
     top: 50%;
     margin-top: calc((0px - var(--button-size)) / 2);
     background-color: rgba(0,0,0,0.3);
-    --aspect-ratio: calc(5 / 9);
+    --aspect-ratio: calc(1 / 1);
 }
 .minicarousel > .minicarousel-prev-bt {
     left: 0;
-    --bgimg: url('data:image/svg+xml;utf8,<svg viewBox="0 0 20 36" xmlns="http://www.w3.org/2000/svg"><path d="M18.769.653a2.004 2.004 0 00-2.961 0L1.245 16.17c-.09.07-.175.147-.256.233A2.302 2.302 0 00.376 18c-.005.578.2 1.157.613 1.598.08.086.167.164.256.233l14.563 15.515a2.004 2.004 0 002.96 0c.744-.791.812-2.031.204-2.904l-.203-.25L5.449 18 18.77 3.809l.203-.25c.608-.874.54-2.113-.203-2.906z"  fill="%23fff"></path></svg>');
+    --aspect-ratio: calc(20 / 36);
+    --bg-img: url('data:image/svg+xml;utf8,<svg viewBox="0 0 20 36" xmlns="http://www.w3.org/2000/svg"><path d="M18.769.653a2.004 2.004 0 00-2.961 0L1.245 16.17c-.09.07-.175.147-.256.233A2.302 2.302 0 00.376 18c-.005.578.2 1.157.613 1.598.08.086.167.164.256.233l14.563 15.515a2.004 2.004 0 002.96 0c.744-.791.812-2.031.204-2.904l-.203-.25L5.449 18 18.77 3.809l.203-.25c.608-.874.54-2.113-.203-2.906z"  fill="%23fff"></path></svg>');
 }
 .minicarousel > .minicarousel-next-bt {
     right: 0;
-    --bgimg: url('data:image/svg+xml;utf8,<svg viewBox="0 0 20 36" xmlns="http://www.w3.org/2000/svg"><path d="M.984.653a1.976 1.976 0 012.936 0L18.36 16.17c.089.07.174.147.254.233.41.441.613 1.02.608 1.598a2.313 2.313 0 01-.608 1.598c-.08.086-.165.164-.254.233L3.92 35.346a1.976 1.976 0 01-2.936 0c-.737-.791-.804-2.031-.201-2.904l.2-.25L14.192 18 .984 3.809l-.201-.25C.18 2.684.247 1.445.983.652z" fill="%23fff"></path></svg>');
+    --aspect-ratio: calc(20 / 36);
+    --bg-img: url('data:image/svg+xml;utf8,<svg viewBox="0 0 20 36" xmlns="http://www.w3.org/2000/svg"><path d="M.984.653a1.976 1.976 0 012.936 0L18.36 16.17c.089.07.174.147.254.233.41.441.613 1.02.608 1.598a2.313 2.313 0 01-.608 1.598c-.08.086-.165.164-.254.233L3.92 35.346a1.976 1.976 0 01-2.936 0c-.737-.791-.804-2.031-.201-2.904l.2-.25L14.192 18 .984 3.809l-.201-.25C.18 2.684.247 1.445.983.652z" fill="%23fff"></path></svg>');
 }
 .minicarousel > .minicarousel-prev-bt::before,
 .minicarousel > .minicarousel-next-bt::before {
@@ -101,27 +104,19 @@
     width: calc(100% * min(1, var(--aspect-ratio)));
     height: auto;
     background-color: transparent;
-    background-image: var(--bgimg);
+    background-image: var(--bg-img);
     background-position: 0 0;
     background-repeat: no-repeat;
     background-size: contain;
 }
 .minicarousel:not(.minicarousel-js) {
     --has-buttons: 0;
-}
-.minicarousel:not(.minicarousel-js) > .minicarousel-viewport {
-    overflow-x: auto;
-}
-.minicarousel:not(.minicarousel-js) > .minicarousel-prev-bt,
-.minicarousel:not(.minicarousel-js) > .minicarousel-next-bt {
-    display: none;
+    --auto-scroll: auto;
 }
 @media (max-width: 360px) {
 .minicarousel {
     --visible-items: 1;
     --has-buttons: 0;
-}
-.minicarousel > .minicarousel-viewport {
-    overflow-x: auto;
+    --auto-scroll: auto;
 }
 }
