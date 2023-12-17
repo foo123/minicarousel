@@ -1,6 +1,7 @@
 /*https://github.com/foo123/minicarousel*/
 .minicarousel {
     --visible-items: 4;
+    --scroll-by: 0;
     --gap: 10px;
     --extra-gap: 0;
     --auto-scroll: hidden;
