@@ -2,7 +2,7 @@
 
 Optimized responsive Carousel for Desktop and Mobile
 
-**version: 1.0.0** (6kB minified)
+**version: 1.1.0** (6kB minified)
 
 **demo**
 

@@ -1,7 +1,7 @@
 /**
 * minicarousel
 * Optimized responsive Carousel for Desktop and Mobile
-* @VERSION: 1.0.0
+* @VERSION: 1.1.0
 * https://github.com/foo123/minicarousel
 */
 (function(root) {
@@ -185,9 +185,12 @@ function get_visible_items(carousel, style)
     style = style || computedStyle(carousel);
     return stdMath.max(1, parseFloat(style.getPropertyValue('--visible-items')) || 0);
 }
-function get_visible_size(carousel)
+function get_visible_size(carousel, style)
 {
-    return carousel ? (carousel.children[0].clientWidth || 0) : 0;
+    //return carousel ? (carousel.children[0].clientWidth || 0) : 0;
+    style = style || computedStyle(carousel);
+    var N = stdMath.round(get_visible_items(carousel, style));
+    return N * get_item_size(carousel) + (N - 1) * get_gap(carousel, style);
 }
 function get_items(carousel)
 {
@@ -207,6 +210,11 @@ function get_gap(carousel, style)
     style = style || computedStyle(carousel);
     return stdMath.max(0, parseInt(style.getPropertyValue('--gap')) || 0);
 }
+function set_egap(carousel, style)
+{
+    style = style || computedStyle(carousel);
+    addStyle(carousel, '--_egapnz', (parseFloat(style.getPropertyValue('--extra-gap')) || 0) > 0 ? 1 : 0);
+}
 function get_animation(carousel, style)
 {
     style = style || computedStyle(carousel);
@@ -214,8 +222,13 @@ function get_animation(carousel, style)
     if (easing && easing.length) easing = easing.slice(1, -1).toLowerCase();
     return {
         duration: stdMath.max(0, parseFloat(style.getPropertyValue('--animation')) || 0),
-        easing: 'cubic' === easing ? easing_cubic : ('quadratic' === easing ? easing_quadratic : easing_linear)
+        easing: 'cubic' === easing ? easing_cubic : ('quadratic' === easing ? easing_quadratic : easing_linear),
+        constantSpeed: !(parseFloat(style.getPropertyValue('--constant-animation')) || 0)
     };
+}
+function repaint(el)
+{
+    el && el.offsetWidth;
 }
 function goTo(carousel, dir)
 {
@@ -263,7 +276,7 @@ function goTo(carousel, dir)
         a = stdMath.abs(carousel.$minicarousel.index - index);
         //if (0 < a)
         {
-            if (0 < a && a < N) anim.duration *= a / N;
+            if (0 < a && a < N && anim.constantSpeed) anim.duration *= a / N;
             s = clamp(index, 0, n - 1);
             e = clamp(index + N - 1, 0, n - 1);
             d = anim.duration / 2;
@@ -282,7 +295,7 @@ function goTo(carousel, dir)
             {
                 for (i=e; i>=s; --i)
                 {
-                    a = clamp((i - s)*100, 0, anim.duration/2);
+                    a = clamp((i - s)*100, 0, d);
                     if (0 <= i && i < n)
                     {
                         addStyle(items[i], 'animation', 'minicarousel-animation '+String(anim.duration - a)+'ms'+' ease '+String(a)+'ms');
@@ -301,8 +314,8 @@ function goTo(carousel, dir)
                     if (0 <= i && i < n)
                     {
                         removeStyle(items[i], 'animation');
-                        if (hasClass(items[i], 'minicarousel-animated')) removeClass(items[i], 'minicarousel-animated');
-                        if (hasClass(items[i], 'minicarousel-animated-rev')) removeClass(items[i], 'minicarousel-animated-rev');
+                        //if (hasClass(items[i], 'minicarousel-animated')) removeClass(items[i], 'minicarousel-animated');
+                        //if (hasClass(items[i], 'minicarousel-animated-rev')) removeClass(items[i], 'minicarousel-animated-rev');
                     }
                 }
             });
@@ -311,7 +324,7 @@ function goTo(carousel, dir)
 }
 function minicarousel(carousels)
 {
-    var self = this, handler, resize, add, remove;
+    var self = this, handler, update, resize, add, remove;
     if (!(self instanceof minicarousel)) return new minicarousel(carousels);
 
     // private methods
@@ -329,23 +342,25 @@ function minicarousel(carousels)
             goTo(bt.parentNode, +1);
         }
     };
-    resize = debounce(function resize() {
-        forEach.call(carousels, function(carousel) {
-            if (carousel.$minicarousel)
+    update = function update(carousel) {
+        if (carousel.$minicarousel)
+        {
+            var style = computedStyle(carousel);
+            set_egap(carousel, style);
+            if ('hidden' !== get_auto_scroll(carousel))
             {
-                if ('hidden' !== get_auto_scroll(carousel))
-                {
-                    carousel.$minicarousel.index = 0;
-                }
-                else
-                {
-                    var style = computedStyle(carousel),
-                        N = stdMath.round(get_visible_items(carousel, style)),
-                        amount = get_visible_size(carousel, style) + get_gap(carousel, style);
-                    carousel.children[0].scrollLeft = stdMath.floor(carousel.$minicarousel.index / N) * amount;
-                }
+                carousel.$minicarousel.index = 0;
             }
-        });
+            else
+            {
+                var N = stdMath.round(get_visible_items(carousel, style)),
+                    amount = get_visible_size(carousel, style) + get_gap(carousel, style);
+                carousel.children[0].scrollLeft = stdMath.floor(carousel.$minicarousel.index / N) * amount;
+            }
+        }
+    };
+    resize = debounce(function resize() {
+        forEach.call(carousels, update);
     }, 200);
     add = function add(carousel) {
         var prevBt, nextBt;
@@ -377,6 +392,7 @@ function minicarousel(carousels)
         }
         (carousel.children[0]) && (carousel.children[0].scrollLeft = 0);
         carousel.$minicarousel = {stop:null, index:0};
+        set_egap(carousel);
         addClass(carousel, 'minicarousel-js');
     };
     remove = function remove(carousel) {
@@ -424,6 +440,10 @@ function minicarousel(carousels)
         }
         return self;
     };
+    self.update = function(carousel) {
+        if (-1 !== carousels.indexOf(carousel)) update(carousel);
+        return self;
+    };
 
     // init
     carousels = Array.prototype.slice.call(carousels || []);
@@ -434,9 +454,10 @@ minicarousel.prototype = {
     constructor: minicarousel,
     dispose: null,
     add: null,
-    remove: null
+    remove: null,
+    update: null
 };
-minicarousel.VERSION = '1.0.0';
+minicarousel.VERSION = '1.1.0';
 if (root.Element) root.Element.prototype.$minicarousel = null;
 // export it
 root.minicarousel = minicarousel;

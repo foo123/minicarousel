@@ -2,15 +2,19 @@
 .minicarousel {
     --visible-items: 4;
     --gap: 10px;
+    --extra-gap: 0;
     --auto-scroll: hidden;
     --show-buttons: 1;
     --button-size: 40px;
     --buttons-outside: calc(1 / 2);
-    --animation: 1200ms;
+    --animation: 900ms;
+    --constant-animation: 1;
     --easing: 'cubic'; /* or 'quadratic' or 'linear' */
     --offset: calc(3 * var(--gap));
     --_vit: max(1, var(--visible-items));
     --_gap: max(0px, var(--gap));
+    --_egap: clamp(0, var(--extra-gap), 1);
+    --_egapnz: 0;
     position: relative;
     display: block;
     box-sizing: border-box;
@@ -53,7 +57,7 @@
     margin: 0;
     white-space: initial;
     font-size: 1rem;
-    width: calc((100% - (var(--_vit) - 1) * var(--_gap)) / var(--_vit));
+    width: calc(((100% - (var(--_vit) - 1 + var(--_egapnz)) * var(--_gap)) / (var(--_vit) + var(--_egapnz) * var(--_egap))));
     --_dur: 0ms;
     --_del: 0ms;
 }
