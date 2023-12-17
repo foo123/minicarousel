@@ -266,7 +266,8 @@ function goTo(carousel, dir)
             anim = get_animation(carousel, style),
             amount = get_visible_size(carousel, style) + get_gap(carousel, style),
             sc = carousel.children[0].scrollLeft || 0,
-            scamount = 0 > dir ? (index >= N ? -amount : -sc) : (index + N < n ? amount : (carousel.children[0].scrollWidth - carousel.children[0].clientWidth - sc)),
+            lsc = carousel.children[0].scrollWidth - carousel.children[0].clientWidth - sc,
+            scamount = 0 > dir ? (amount > sc ? -sc : -amount) : (amount > lsc ? lsc : amount),
             scroll = stdMath.max(0, sc + scamount);
 
         // clear previous animation if any
