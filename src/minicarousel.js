@@ -1,7 +1,7 @@
 /**
 * minicarousel
 * Optimized responsive Carousel for Desktop and Mobile
-* @VERSION: 1.1.1
+* @VERSION: 1.2.0
 * https://github.com/foo123/minicarousel
 */
 (function(root) {
@@ -192,6 +192,13 @@ function get_scroll_by(carousel, style)
     if (0 >= SB) SB = N;
     return stdMath.min(SB, N);
 }
+function get_index(carousel, style)
+{
+    var size = get_item_size(carousel, style) + get_gap(carousel, style),
+        scroll = carousel.children[0].scrollLeft || 0,
+        index = stdMath.round(scroll / size);
+    return {index:index, size:size, scroll:scroll};
+}
 function get_swipe_amount(carousel, style)
 {
     //return carousel ? (carousel.children[0].clientWidth || 0) : 0;
@@ -243,23 +250,26 @@ function goTo(carousel, dir)
             i, s, e, a, d,
             viewport = carousel.children[0],
             slider = viewport.children[0],
-            index = carousel.$minicarousel.index,
+            idx = get_index(carousel, style),
             items = get_items(carousel, style),
             n = items.length,
             N = stdMath.round(get_visible_items(carousel, style)),
             SB = stdMath.round(get_scroll_by(carousel, style)),
             anim = get_animation(carousel, style),
-            amount = get_swipe_amount(carousel, style),
-            sc = viewport.scrollLeft || 0,
+            size = idx.size,
+            index = idx.index, newindex,
+            sc = idx.scroll,
+            diff = index * size - sc,
             lsc = viewport.scrollWidth - viewport.clientWidth - sc,
+            amount = get_swipe_amount(carousel, style) + (0 > dir ? -diff : diff),
             scamount = 0 > dir ? (amount > sc ? -sc : -amount) : (amount > lsc ? lsc : amount),
             scroll = stdMath.max(0, sc + scamount);
 
         // clear previous animation if any
         if (carousel.$minicarousel.stop) carousel.$minicarousel.stop();
 
-        carousel.$minicarousel.index = n ? (0 > dir ? stdMath.max(0, index - SB) : stdMath.min(index + SB, stdMath.max(0, n - N))) : 0;
-        a = stdMath.abs(carousel.$minicarousel.index - index);
+        carousel.$minicarousel.index = newindex = n ? (0 > dir ? stdMath.max(0, index - SB) : stdMath.min(index + SB, stdMath.max(0, n - N))) : 0;
+        a = stdMath.abs(newindex - index);
         //if (0 < a)
         {
             if (0 < a && a < SB && anim.constantSpeed) anim.duration *= a / SB;
@@ -313,7 +323,7 @@ function goTo(carousel, dir)
 }
 function minicarousel(carousels)
 {
-    var self = this, handler, update, resize, add, remove;
+    var self = this, handler, handler2, update, resize, add, remove;
     if (!(self instanceof minicarousel)) return new minicarousel(carousels);
 
     // private methods
@@ -331,28 +341,19 @@ function minicarousel(carousels)
             goTo(bt.parentNode, +1);
         }
     };
+    handler2 = function handler2(evt) {
+        var carousel = evt.target.parentNode;
+        carousel.$minicarousel.index = get_index(carousel).index;
+    };
     update = function update(carousel) {
         if (carousel.$minicarousel)
         {
             var style = computedStyle(carousel),
-                autoScroll = get_auto_scroll(carousel, style);
+                index = carousel.$minicarousel.index,
+                N = stdMath.round(get_scroll_by(carousel, style)),
+                amount = get_swipe_amount(carousel, style);
             set_egap(carousel, style);
-            if (carousel.$minicarousel.autoScroll !== autoScroll)
-            {
-                carousel.$minicarousel.autoScroll = autoScroll;
-                carousel.$minicarousel.index = 0;
-                (carousel.children[0]) && (carousel.children[0].scrollLeft = 0);
-            }
-            else if ('hidden' === autoScroll)
-            {
-                var N = stdMath.round(get_scroll_by(carousel, style)),
-                    amount = get_swipe_amount(carousel, style);
-                carousel.children[0].scrollLeft = stdMath.floor(carousel.$minicarousel.index / N) * amount;
-            }
-            else
-            {
-                carousel.$minicarousel.index = 0;
-            }
+            carousel.children[0].scrollLeft = stdMath.round(index / N) * amount;
         }
     };
     resize = debounce(function resize() {
@@ -387,9 +388,10 @@ function minicarousel(carousels)
             carousel.appendChild(nextBt);
         }
         (carousel.children[0]) && (carousel.children[0].scrollLeft = 0);
+        addEvent(carousel.children[0], 'scrollend', handler2, false);
         addClass(carousel, 'minicarousel-js');
         set_egap(carousel);
-        carousel.$minicarousel = {stop:null, index:0, autoScroll:get_auto_scroll(carousel)};
+        carousel.$minicarousel = {stop:null, index:0};
     };
     remove = function remove(carousel) {
         var prevBt = carousel.querySelector('.minicarousel-prev-bt'),
@@ -407,6 +409,7 @@ function minicarousel(carousels)
             nextBt.$minicarousel = null;
         }
         //if (carousel.$minicarousel.stop) carousel.$minicarousel.stop();
+        removeEvent(carousel.children[0], 'scrollend', handler2, false);
         removeClass(carousel, 'minicarousel-js');
         carousel.$minicarousel = null;
     };
@@ -419,7 +422,7 @@ function minicarousel(carousels)
     };
     // add
     self.add = function(carousel) {
-        if (-1 === carousels.indexOf(carousel))
+        if (carousel && (-1 === carousels.indexOf(carousel)))
         {
             add(carousel);
             carousels.push(carousel);
@@ -429,7 +432,7 @@ function minicarousel(carousels)
     // remove
     self.remove = function(carousel) {
         var idx;
-        if (-1 !== (idx = carousels.indexOf(carousel)))
+        if (carousel && (-1 !== (idx = carousels.indexOf(carousel))))
         {
             carousels.splice(idx, 1);
             remove(carousel);
@@ -437,11 +440,13 @@ function minicarousel(carousels)
         return self;
     };
     self.update = function(carousel) {
-        if (-1 !== carousels.indexOf(carousel)) update(carousel);
+        carousel = carousel || carousels[0];
+        if (carousel && (-1 !== carousels.indexOf(carousel))) update(carousel);
         return self;
     };
     self.goTo = function(carousel, dir) {
-        if (-1 !== carousels.indexOf(carousel)) goTo(carousel, 0 > ((+dir) || 0) ? -1 : 1);
+        carousel = carousel || carousels[0];
+        if (carousel && (-1 !== carousels.indexOf(carousel))) goTo(carousel, 0 > ((+dir) || 0) ? -1 : 1);
         return self;
     };
 
@@ -458,7 +463,7 @@ minicarousel.prototype = {
     update: null,
     goTo: null
 };
-minicarousel.VERSION = '1.1.1';
+minicarousel.VERSION = '1.2.0';
 if (root.Element) root.Element.prototype.$minicarousel = null;
 // export it
 root.minicarousel = minicarousel;

@@ -138,10 +138,3 @@
         transform: translateX(0);
     }
 }
-@media (max-width: 360px) {
-.minicarousel {
-    --visible-items: 1;
-    --show-buttons: 0;
-    --auto-scroll: auto;
-}
-}
