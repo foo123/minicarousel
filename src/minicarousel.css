@@ -7,6 +7,7 @@
     --auto-scroll: hidden;
     --show-buttons: 1;
     --button-size: 40px;
+    --button-padding: 0px;
     --buttons-outside: calc(1 / 2);
     --animation: 900ms;
     --constant-animation: 1;
@@ -22,8 +23,8 @@
     box-sizing: border-box;
     padding: 0;
     border: 0;
-    padding-left: calc(var(--show-buttons) * var(--button-size) * var(--buttons-outside));
-    padding-right: calc(var(--show-buttons) * var(--button-size) * var(--buttons-outside));
+    padding-left: calc(var(--show-buttons) * (var(--button-size) + 2 * var(--button-padding)) * var(--buttons-outside));
+    padding-right: calc(var(--show-buttons) * (var(--button-size) + 2 * var(--button-padding)) * var(--buttons-outside));
     margin: 0 auto;
     max-width: 100%;
 }
@@ -70,14 +71,16 @@
     display: inline-block;
     box-sizing: border-box;
     margin: 0;
+    padding: var(--button-padding);
+    border: 0;
     cursor: pointer;
     z-index: 2;
     overflow: hidden;
     border-radius: 50%;
-    width: calc(var(--show-buttons) * var(--button-size));
-    height: calc(var(--show-buttons) * var(--button-size));
+    width: calc(var(--show-buttons) * (var(--button-size) + 2 * var(--button-padding)));
+    height: calc(var(--show-buttons) * (var(--button-size) + 2 * var(--button-padding)));
     top: 50%;
-    margin-top: calc((0px - var(--button-size)) / 2);
+    transform: translate(0,-50%);
     background-color: rgba(0,0,0,0.3);
     --aspect-ratio: calc(1 / 1);
 }
@@ -103,8 +106,8 @@
     margin: 0;
     border: 0;
     padding: 0;
-    padding-bottom: calc(100% * min(1, 1 / var(--aspect-ratio)));
-    width: calc(100% * min(1, var(--aspect-ratio)));
+    padding-bottom: calc(var(--show-buttons) * var(--button-size) * min(1, 1 / var(--aspect-ratio)));
+    width: calc(var(--show-buttons) * var(--button-size) * min(1, var(--aspect-ratio)));
     height: auto;
     background-color: transparent;
     background-image: var(--bg-img);
