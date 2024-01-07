@@ -1,7 +1,7 @@
 /**
 * minicarousel
 * Optimized responsive Carousel for Desktop and Mobile
-* @VERSION: 1.2.0
+* @VERSION: 1.2.1
 * https://github.com/foo123/minicarousel
 */
 (function(root) {
@@ -108,7 +108,7 @@ function interpolate(a, b, t, easing, isFinal)
 {
     return isFinal ? b : (a + (b - a) * easing(t));
 }
-function animate(el, props, duration, easing, oncomplete)
+function animate(el, props, duration, easing, oncomplete, onstart)
 {
     if (!el) return function() {};
 
@@ -118,7 +118,6 @@ function animate(el, props, duration, easing, oncomplete)
 
     function animation(tms) {
         var isFinal = false;
-        if (null == t0) t0 = tms;
         if (stopped || (0 >= duration))
         {
             // force to completion
@@ -127,8 +126,21 @@ function animate(el, props, duration, easing, oncomplete)
         }
         else
         {
+            /*if (null == tms)
+            {
+                t = 0;
+                isFinal = false;
+            }
+            else
+            {*/
+            if (null == t0)
+            {
+                if (onstart) onstart(el);
+                t0 = tms;
+            }
             t = clamp((tms - t0) / duration, 0, 1);
             isFinal = (tms >= duration + t0);
+            /*}*/
         }
         for (p in o)
         {
@@ -148,7 +160,7 @@ function animate(el, props, duration, easing, oncomplete)
         }
         if (isFinal)
         {
-            if (oncomplete) oncomplete(el);
+            if (oncomplete) requestAnimationFrame(function() {oncomplete(el);});
         }
         else
         {
@@ -176,7 +188,8 @@ function animate(el, props, duration, easing, oncomplete)
             o[p] = [+(el[p]) || 0, +(props[p]) || 0];
         }
     }
-    animation();
+    //animation(null);
+    requestAnimationFrame(animation);
     return function(){stopped = true;};
 }
 function get_visible_items(carousel, style)
@@ -276,31 +289,6 @@ function goTo(carousel, dir)
             s = clamp(index, 0, n - 1);
             e = clamp(index + N - 1, 0, n - 1);
             d = anim.duration / 2;
-            if (anim.withInertia)
-            {
-                if (0 > dir)
-                {
-                    for (i=s; i<=e; ++i)
-                    {
-                        a = clamp((e - i)*100, 0, d);
-                        if (0 <= i && i < n)
-                        {
-                            addStyle(items[i], 'animation', 'minicarousel-animation-rev '+String(anim.duration - a)+'ms'+' ease '+String(a)+'ms');
-                        }
-                    }
-                }
-                else
-                {
-                    for (i=e; i>=s; --i)
-                    {
-                        a = clamp((i - s)*100, 0, d);
-                        if (0 <= i && i < n)
-                        {
-                            addStyle(items[i], 'animation', 'minicarousel-animation '+String(anim.duration - a)+'ms'+' ease '+String(a)+'ms');
-                        }
-                    }
-                }
-            }
             carousel.$minicarousel.stop = animate(
             viewport,
             {scrollLeft: scroll},
@@ -314,6 +302,32 @@ function goTo(carousel, dir)
                         if (0 <= i && i < n)
                         {
                             removeStyle(items[i], 'animation');
+                        }
+                    }
+                }
+            }, function() {
+                if (anim.withInertia)
+                {
+                    if (0 > dir)
+                    {
+                        for (i=s; i<=e; ++i)
+                        {
+                            a = clamp((e - i)*100, 0, d);
+                            if (0 <= i && i < n)
+                            {
+                                addStyle(items[i], 'animation', 'minicarousel-animation-rev '+String(anim.duration - a)+'ms'+' ease '+String(a)+'ms');
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (i=e; i>=s; --i)
+                        {
+                            a = clamp((i - s)*100, 0, d);
+                            if (0 <= i && i < n)
+                            {
+                                addStyle(items[i], 'animation', 'minicarousel-animation '+String(anim.duration - a)+'ms'+' ease '+String(a)+'ms');
+                            }
                         }
                     }
                 }
@@ -463,7 +477,7 @@ minicarousel.prototype = {
     update: null,
     goTo: null
 };
-minicarousel.VERSION = '1.2.0';
+minicarousel.VERSION = '1.2.1';
 if (root.Element) root.Element.prototype.$minicarousel = null;
 // export it
 root.minicarousel = minicarousel;
