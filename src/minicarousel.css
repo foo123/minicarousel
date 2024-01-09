@@ -71,7 +71,7 @@
     display: inline-block;
     box-sizing: border-box;
     margin: 0;
-    padding: var(--button-padding);
+    padding: 0;
     border: 0;
     cursor: pointer;
     z-index: 2;
