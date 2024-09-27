@@ -1,7 +1,7 @@
 /**
 * minicarousel
 * Optimized responsive Carousel for Desktop and Mobile
-* @VERSION: 1.2.1
+* @VERSION: 1.2.2
 * https://github.com/foo123/minicarousel
 */
 (function(root) {
@@ -342,16 +342,17 @@ function minicarousel(carousels)
 
     // private methods
     handler = function handler(evt) {
-        var bt = evt.target.closest('a');
+        var bt = evt.target.closest('button');
         if (!bt) return;
+        if (evt.key && ('ENTER' !== evt.key)) return; // in FF for win: SPACE functions like ENTER
         if (hasClass(bt, 'minicarousel-prev-bt'))
         {
-            evt.preventDefault && evt.preventDefault();
+            //evt.preventDefault && evt.preventDefault();
             goTo(bt.parentNode, -1);
         }
         else if (hasClass(bt, 'minicarousel-next-bt'))
         {
-            evt.preventDefault && evt.preventDefault();
+            //evt.preventDefault && evt.preventDefault();
             goTo(bt.parentNode, +1);
         }
     };
@@ -377,28 +378,42 @@ function minicarousel(carousels)
         var prevBt, nextBt;
         if ((prevBt = carousel.querySelector('.minicarousel-prev-bt')) && (carousel === prevBt.parentNode))
         {
-            if (prevBt.$minicarousel) removeEvent(prevBt, 'click', prevBt.$minicarousel, {passive:false,capture:false});
-            addEvent(prevBt, 'click', prevBt.$minicarousel = handler, {passive:false,capture:false});
+            if (prevBt.$minicarousel)
+            {
+                removeEvent(prevBt, 'click', prevBt.$minicarousel, {passive:true,capture:false});
+                removeEvent(prevBt, 'keyup', prevBt.$minicarousel, {passive:true,capture:false});
+            }
+            addEvent(prevBt, 'click', handler, {passive:true,capture:false});
+            addEvent(prevBt, 'keyup', handler, {passive:true,capture:false});
+            prevBt.$minicarousel = handler;
         }
         else
         {
-            prevBt = document.createElement('a');
-            prevBt.href = '#';
+            prevBt = document.createElement('button');
             addClass(prevBt, 'minicarousel-prev-bt');
-            addEvent(prevBt, 'click', prevBt.$minicarousel = handler, {passive:false,capture:false});
+            addEvent(prevBt, 'click', handler, {passive:true,capture:false});
+            addEvent(prevBt, 'keyup', handler, {passive:true,capture:false});
+            prevBt.$minicarousel = handler;
             carousel.appendChild(prevBt);
         }
         if ((nextBt = carousel.querySelector('.minicarousel-next-bt')) && (carousel === nextBt.parentNode))
         {
-            if (nextBt.$minicarousel) removeEvent(prevBt, 'click', nextBt.$minicarousel, {passive:false,capture:false});
-            addEvent(nextBt, 'click', nextBt.$minicarousel = handler, {passive:false,capture:false});
+            if (nextBt.$minicarousel)
+            {
+                removeEvent(nextBt, 'click', nextBt.$minicarousel, {passive:true,capture:false});
+                removeEvent(nextBt, 'keyup', nextBt.$minicarousel, {passive:true,capture:false});
+            }
+            addEvent(nextBt, 'click', handler, {passive:true,capture:false});
+            addEvent(nextBt, 'keyup', handler, {passive:true,capture:false});
+            nextBt.$minicarousel = handler;
         }
         else
         {
-            nextBt = document.createElement('a');
-            nextBt.href = '#';
+            nextBt = document.createElement('button');
             addClass(nextBt, 'minicarousel-next-bt');
-            addEvent(nextBt, 'click', nextBt.$minicarousel = handler, {passive:false,capture:false});
+            addEvent(nextBt, 'click', handler, {passive:true,capture:false});
+            addEvent(nextBt, 'keyup', handler, {passive:true,capture:false});
+            nextBt.$minicarousel = handler;
             carousel.appendChild(nextBt);
         }
         (carousel.children[0]) && (carousel.children[0].scrollLeft = 0);
@@ -413,13 +428,21 @@ function minicarousel(carousels)
         if (prevBt && (carousel === prevBt.parentNode))
         {
             carousel.removeChild(prevBt);
-            if (prevBt.$minicarousel) removeEvent(prevBt, 'click', prevBt.$minicarousel, {passive:false,capture:false});
+            if (prevBt.$minicarousel)
+            {
+                removeEvent(prevBt, 'click', prevBt.$minicarousel, {passive:true,capture:false});
+                removeEvent(prevBt, 'keyup', prevBt.$minicarousel, {passive:true,capture:false});
+            }
             prevBt.$minicarousel = null;
         }
         if (nextBt && (carousel === nextBt.parentNode))
         {
             carousel.removeChild(nextBt);
-            if (nextBt.$minicarousel) removeEvent(nextBt, 'click', nextBt.$minicarousel, {passive:false,capture:false});
+            if (nextBt.$minicarousel)
+            {
+                removeEvent(nextBt, 'click', nextBt.$minicarousel, {passive:true,capture:false});
+                removeEvent(nextBt, 'keyup', nextBt.$minicarousel, {passive:true,capture:false});
+            }
             nextBt.$minicarousel = null;
         }
         //if (carousel.$minicarousel.stop) carousel.$minicarousel.stop();
@@ -477,7 +500,7 @@ minicarousel.prototype = {
     update: null,
     goTo: null
 };
-minicarousel.VERSION = '1.2.1';
+minicarousel.VERSION = '1.2.2';
 if (root.Element) root.Element.prototype.$minicarousel = null;
 // export it
 root.minicarousel = minicarousel;
