@@ -2,7 +2,7 @@
 
 Optimized responsive Carousel for Desktop and Mobile
 
-**version: 1.2.2** (7kB minified)
+**version: 1.2.3** (7.5kB minified)
 
 **demo**
 
@@ -35,7 +35,7 @@ Optimized responsive Carousel for Desktop and Mobile
 }
 }
 </style>
-<div class="minicarousel">
+<div class="minicarousel" data-prev-btn="Prev" data-next-btn="Next">
 <div class="minicarousel-viewport">
 <ul>
 <li>1</li>

@@ -1,7 +1,7 @@
 /**
 * minicarousel
 * Optimized responsive Carousel for Desktop and Mobile
-* @VERSION: 1.2.2
+* @VERSION: 1.2.3
 * https://github.com/foo123/minicarousel
 */
 (function(root) {
@@ -45,6 +45,15 @@ function removeEvent(target, event, handler, options)
 {
     if (target.detachEvent) target.detachEvent('on' + event, handler);
     else target.removeEventListener(event, handler, hasEventOptions() ? options : ('object' === typeof options ? !!options.capture : !!options));
+}
+function att(el, att, val)
+{
+    if (3 > arguments.length)
+    {
+        return el.hasAttribute(att) ? el.getAttribute(att) : null;
+    }
+    el.setAttribute(att, val);
+    return el;
 }
 function hasClass(el, className)
 {
@@ -254,6 +263,13 @@ function get_animation(carousel, style)
         withInertia: !!(parseFloat(style.getPropertyValue('--inertia-animation')) || 0)
     };
 }
+function get_btns(carousel)
+{
+    return {
+        prev: att(carousel, 'data-prev-btn') || 'Previous',
+        next: att(carousel, 'data-next-btn') || 'Next'
+    };
+}
 function goTo(carousel, dir)
 {
     if (carousel && carousel.children[0] && hasClass(carousel.children[0], 'minicarousel-viewport'))
@@ -375,7 +391,7 @@ function minicarousel(carousels)
         forEach.call(carousels, update);
     }, 200);
     add = function add(carousel) {
-        var prevBt, nextBt;
+        var prevBt, nextBt, btns = get_btns(carousel);
         if ((prevBt = carousel.querySelector('.minicarousel-prev-bt')) && (carousel === prevBt.parentNode))
         {
             if (prevBt.$minicarousel)
@@ -393,6 +409,7 @@ function minicarousel(carousels)
             addClass(prevBt, 'minicarousel-prev-bt');
             addEvent(prevBt, 'click', handler, {passive:true,capture:false});
             addEvent(prevBt, 'keyup', handler, {passive:true,capture:false});
+            att(prevBt, 'title', btns.prev);
             prevBt.$minicarousel = handler;
             carousel.appendChild(prevBt);
         }
@@ -413,6 +430,7 @@ function minicarousel(carousels)
             addClass(nextBt, 'minicarousel-next-bt');
             addEvent(nextBt, 'click', handler, {passive:true,capture:false});
             addEvent(nextBt, 'keyup', handler, {passive:true,capture:false});
+            att(nextBt, 'title', btns.next);
             nextBt.$minicarousel = handler;
             carousel.appendChild(nextBt);
         }
@@ -500,7 +518,7 @@ minicarousel.prototype = {
     update: null,
     goTo: null
 };
-minicarousel.VERSION = '1.2.2';
+minicarousel.VERSION = '1.2.3';
 if (root.Element) root.Element.prototype.$minicarousel = null;
 // export it
 root.minicarousel = minicarousel;
